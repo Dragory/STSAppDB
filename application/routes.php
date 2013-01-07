@@ -34,8 +34,11 @@
 
 Route::get('/', array('as' => 'index', 'uses' => 'main@index'));
 
+Route::get('/login', array('as' => 'login', 'uses' => 'login@loginPage'));
 Route::get('/startLogin', array('as' => 'startLogin', 'uses' => 'login@startLogin'));
 Route::get('/checkLogin', array('as' => 'checkLogin', 'uses' => 'login@checkLogin'));
+
+Route::post('/changeLanguage', array('as' => 'changeLanguage', 'uses' => 'main@changeLanguage', 'before' => 'csrf'));
 
 /*
 |--------------------------------------------------------------------------

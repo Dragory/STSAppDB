@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * Handles OpenID authentication.
+ * Other user-related methods are contained in the
+ * Users model (models/Users.php).
+ */
 class OIDAuth
 {
     private $openid = null, // The OpenID handler
