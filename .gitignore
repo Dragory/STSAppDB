@@ -36,6 +36,7 @@ intermediate
 publish
 .idea
 
-# DB and Steam API
+# Some secure configs...
+/application/config/application.php
 /application/config/database.php
 /application/config/steamapi.php

@@ -36,5 +36,5 @@
 return array(
 
 	'docs' => array('handles' => 'docs'),
-
+    'actionfilter' => array('handles' => 'actionfilter', 'auto' => true)
 );

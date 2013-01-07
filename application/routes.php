@@ -32,13 +32,23 @@
 |
 */
 
+// Index/dashboard
 Route::get('/', array('as' => 'index', 'uses' => 'main@index'));
 
+// Login
 Route::get('/login', array('as' => 'login', 'uses' => 'login@loginPage'));
 Route::get('/startLogin', array('as' => 'startLogin', 'uses' => 'login@startLogin'));
 Route::get('/checkLogin', array('as' => 'checkLogin', 'uses' => 'login@checkLogin'));
 
+// Changing the language
 Route::post('/changeLanguage', array('as' => 'changeLanguage', 'uses' => 'main@changeLanguage', 'before' => 'csrf'));
+
+// Viewing and adding applications
+Route::get('/application/(:num)', array('as' => 'application', 'uses' => 'main@application'));
+Route::get('/applications', array('as' => 'applications', 'uses' => 'main@applications'));
+Route::get('/applicationSearch', array('as' => 'applicationSearch', 'uses' => 'main@applicationSearch'));
+Route::get('/addApplication', array('as' => 'addApplication', 'uses' => 'main@addApplication'));
+Route::post('/addApplicationPost', array('as' => 'addApplicationPost', 'uses' => 'main@addApplicationPost', 'before' => 'csrf'));
 
 /*
 |--------------------------------------------------------------------------

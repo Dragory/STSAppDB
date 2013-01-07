@@ -1,9 +1,9 @@
 <div id="menu">
 <?php if ($user): ?>
     <ul>
-        <li><a href="#">Dashboard</a></li>
-        <li><a href="#">Applications</a></li>
-        <li><a href="#">Add a new application</a></li>
+        <li><a href="{{ URL::to_route('index') }}">Dashboard</a></li>
+        <li><a href="{{ URL::to_route('applications') }}">Applications</a></li>
+        <li><a href="{{ URL::to_route('addApplication') }}">Add a new application</a></li>
         <li>
             <form id="form-lang" action="{{ URL::to_route('changeLanguage') }}" method="post">
                 {{ Form::token() }}
@@ -25,6 +25,6 @@
 </div>
 <div id="userbar">
 <?php if ($user): ?>
-    {{ $user->user_name }}
+    {{ $user->account->acc_name }}
 <?php endif; ?>
 </div>

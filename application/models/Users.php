@@ -22,6 +22,9 @@ class Users
         // If no user was found, return null (as the query would in case of no results)
         if (!$user) return null;
 
+        // Get the user's Steam Account information
+        $user->account = $this->getSteamAccount($user->user_steam64);
+
         // Get the user's language access rules
         $user->lang_access = $this->getLanguageAccess($user->user_steam64);
 
@@ -59,6 +62,112 @@ class Users
 
         if (!$access) return null;
         return $access[0];
+    }
+
+    public function getSteamAccounts($steam64Ids, $iteration = 0)
+    {
+        if (empty($steam64Ids)) return [];
+
+        // Calculate the expiry date (when we should update the data)
+        $expiryDate = date('Y-m-d H:i:s', time()-60*60*6);
+
+        // Get the accounts we want
+        $accounts = DB::table('steam_accounts')
+            ->where_in('acc_steam64', $steam64Ids)
+            ->where('acc_updated', '>', $expiryDate)
+            ->get();
+
+        // Loop through the accounts and build a filtering array for array_filter.
+        $missingIds = $steam64Ids;
+        $foundIds = [];
+        foreach ($accounts as $account)
+        {
+            $foundIds[] = $account->acc_steam64;
+        }
+
+        $missingIds = array_diff($missingIds, $foundIds);
+
+        // If there were any missing IDs, get their information
+        // from the API and save that to the database.
+        if ($missingIds)
+        {
+            // However, if we've already done this once (iteration #2), we can assume the
+            // data simply is not there for whatever reason. In that
+            // case we'll just return "null" values for those entries.
+            if ($iteration > 0)
+            {
+                foreach ($missingIds as $id)
+                {
+                    $tempAccount = new stdClass;
+                    $tempAccount->acc_steam64 = $id;
+                    $tempAccount->id_account  = null;
+                    $tempAccount->acc_name    = null;
+                    $tempAccount->acc_avatar  = null;
+                    $tempAccount->acc_updated = null;
+
+                    $accounts[] = $tempAccount;
+                }
+            }
+            // Otherwise go for the API
+            else
+            {
+                Log::write('info', 'Hitting the API for '.count($missingIds).' 64-bit Steam IDs.');
+                $request = $this->api->request(
+                    'ISteamUser',
+                    'GetPlayerSummaries',
+                    '0002',
+                    ['steamids' => implode(',', $missingIds)]
+                );
+
+                // If we got the API response, delete any possible previous
+                // entries from the database and add the new ones according
+                // to the API response.
+                $apiFoundIds = [];
+                if ($request && !empty($request->response->players))
+                {
+                    // Deleting...
+                    DB::table('steam_accounts')
+                        ->where_in('acc_steam64', $missingIds)
+                        ->delete();
+
+                    // Inserting...
+                    $insertArray = [];
+                    foreach ($request->response->players as $player)
+                    {
+                        $insertArray[] = [
+                            'acc_steam64' => $player->steamid,
+                            'acc_name'    => $player->personaname,
+                            'acc_avatar'  => $player->avatar,
+                            'acc_updated' => DB::raw('NOW()')
+                        ];
+                    }
+
+                    DB::table('steam_accounts')
+                        ->insert($insertArray);
+                }
+
+                // Alright, data fixed.
+                // Let's try looking for the data in the database again.
+                return $this->getSteamAccounts($steam64Ids, 1);
+            }
+        }
+        
+        // Now let's format the ID array
+        $return = [];
+        foreach ($accounts as $account)
+        {
+            $return[$account->acc_steam64] = $account;
+        }
+
+        return $return;
+    }
+
+    public function getSteamAccount($steam64)
+    {
+        $accounts = $this->getSteamAccounts([$steam64]);
+
+        if (!$accounts) return null;
+        return array_shift($accounts);
     }
 
     /**
@@ -134,42 +243,21 @@ class Users
         // Get the user's login token and generate a new one
         // if none was found. Also save the new token.
         $token = $user->user_token;
-        if (!$token) $token = $this->generateToken($user->id_user);
-
-        // Refresh the user's information from the Steam Web API
-        $request = $this->api->request(
-            'ISteamUser',
-            'GetPlayerSummaries',
-            '0002',
-            ['steamids' => (string)$user->user_steam64]
-        );
-
-        // If the player was found, use that information
-        if ($request && !empty($request->response->players))
+        if (!$token)
         {
-            $player = $request->response->players[0];
-        }
-        // And if not, use some placeholder information
-        else
-        {
-            $player = stdClass;
-            $player->personaname = 'Unknown';
-            $player->avatar      = '';
-        }
+            $token = $this->generateToken($user->id_user);
 
-        // Save the updated information
-        DB::table('users')
+            DB::table('users')
                 ->where('id_user', '=', $user->id_user)
                 ->update([
-                    'user_token'  => $token,
-                    'user_name'   => $player->personaname,
-                    'user_avatar' => $player->avatar
+                    'user_token'  => $token
                 ]);
+        }
 
         // Log the user in by saving the login token
         // in SESSION and in a cookie
         Session::put('token', $token);
-        Cookie::put('token', $token);
+        Cookie::forever('token', $token);
 
         // Everything went as expected!
         return true;
@@ -210,7 +298,6 @@ class Users
         DB::table('users')
             ->insert([
                 'user_steam64' => $steam64,
-                'user_name' => $steam64,
                 'user_time_register' => DB::raw('NOW()'),
                 'user_time_active' => DB::raw('NOW()')
             ]);
