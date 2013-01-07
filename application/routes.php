@@ -32,10 +32,10 @@
 |
 */
 
-Route::get('/', function()
-{
-	return View::make('home.index');
-});
+Route::get('/', array('as' => 'index', 'uses' => 'main@index'));
+
+Route::get('/startLogin', array('as' => 'startLogin', 'uses' => 'login@startLogin'));
+Route::get('/checkLogin', array('as' => 'checkLogin', 'uses' => 'login@checkLogin'));
 
 /*
 |--------------------------------------------------------------------------
